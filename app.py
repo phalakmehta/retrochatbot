@@ -335,4 +335,5 @@ if __name__ == '__main__':
     
     # Get port from environment (Railway sets PORT automatically)
     port = int(os.environ.get('PORT', 5001))
-    app_flask.run(host='0.0.0.0', port=port, debug=False
+    app_flask.run(host='0.0.0.0', port=port, debug=False)
+
