@@ -120,7 +120,7 @@ print(">>> NEURAL PATHWAYS COMPILED...")
 
 # --- 5. EXTERNAL COMMUNICATION INTERFACE (FLASK) ---
 app_flask = Flask(__name__)
-CORS(app_flask) # This line gives the frontend permission to talk to the backend.
+CORS(app_flask, resources={r"/*": {"origins": "*"}}) # This line gives the frontend permission to talk to the backend.
 
 @app_flask.route('/')
 def serve_index():
@@ -167,3 +167,4 @@ if __name__ == '__main__':
     print(">>> COMMUNICATION INTERFACE ONLINE. AWAITING CONNECTION ON PORT 5001...")
     print("//==============================================================//")
     app_flask.run(host='0.0.0.0', port=5001)
+
