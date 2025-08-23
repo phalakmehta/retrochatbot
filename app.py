@@ -12,7 +12,8 @@
 # //==============================================================//
 
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
 from typing import List, TypedDict
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -25,17 +26,14 @@ print(">>> W.O.P.R. SYSTEM BOOT SEQUENCE INITIATED...")
 load_dotenv()
 print(">>> ENVIRONMENT VARIABLES LOADED...")
 
-
 # --- 1. STATE VECTOR DEFINITION ---
 class GameState(TypedDict):
     messages: List[BaseMessage]
     riddle_number: int
 
-
 # --- 2. KNOWLEDGE BASE INITIALIZATION ---
 riddles = [
-    {"riddle": "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?",
-     "answer": "map"},
+    {"riddle": "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?", "answer": "map"},
     {"riddle": "What has an eye, but cannot see?", "answer": "needle"},
     {"riddle": "What has to be broken before you can use it?", "answer": "egg"}
 ]
@@ -44,7 +42,6 @@ print(">>> KNOWLEDGE BASE ONLINE...")
 
 # --- 3. COGNITIVE NODE DEFINITIONS ---
 llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
-
 
 def ask_first_riddle(state: GameState):
     """Initiates contact and presents the first logic test."""
@@ -57,21 +54,16 @@ Here is your first riddle:
     message = AIMessage(content=welcome_message_text)
     return {"messages": [message], "riddle_number": 1}
 
-
 def check_answer(state: GameState):
     """Lets the LLM itself judge the user's answer and generate a creative response."""
     current_riddle_number = state["riddle_number"]
     user_answer = state["messages"][-1].content
-
+    
     correct_answer = riddles[current_riddle_number - 1]["answer"]
     current_riddle = riddles[current_riddle_number - 1]["riddle"]
 
-    # ===========================================================================#
-    # =========== THIS IS THE FIX: The prompt is now structured correctly =======
-    # ===========================================================================#
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system",
-         "You are W.O.P.R., a cryptic, logical supercomputer. Your task is to evaluate a user's answer to a riddle based on the information provided in the user message."),
+        ("system", "You are W.O.P.R., a cryptic, logical supercomputer. Your task is to evaluate a user's answer to a riddle based on the information provided in the user message."),
         ("human", """Here is the data for evaluation:
         - The riddle is: "{riddle}"
         - The correct answer is: "{correct_answer}"
@@ -82,10 +74,9 @@ def check_answer(state: GameState):
         - If incorrect, start with the single word "INCORRECT", followed by a creative, cryptic message encouraging them to try again.
         """)
     ])
-    # ===========================================================================#
-
+    
     judgement_chain = prompt_template | llm
-
+    
     if current_riddle_number >= len(riddles):
         next_riddle_text = f"LOGIC TEST COMPLETE. THE SECRET KEY IS: {SECRET_KEY}"
     else:
@@ -96,7 +87,7 @@ def check_answer(state: GameState):
         "correct_answer": correct_answer,
         "user_answer": user_answer
     })
-
+    
     response_text = ai_response.content
 
     if response_text.strip().upper().startswith("CORRECT"):
@@ -108,9 +99,7 @@ def check_answer(state: GameState):
     message = AIMessage(content=response_text)
     return {"messages": state["messages"] + [message], "riddle_number": next_riddle_number}
 
-
 print(">>> COGNITIVE NODES REDEFINED FOR DYNAMIC RESPONSE...")
-
 
 # --- 4. NEURAL PATHWAY CONSTRUCTION (LANGGRAPH) ---
 def should_start_game(state: GameState):
@@ -118,7 +107,6 @@ def should_start_game(state: GameState):
         return "ask_riddle_node"
     else:
         return "check_answer_node"
-
 
 workflow = StateGraph(GameState)
 workflow.add_node("ask_riddle_node", ask_first_riddle)
@@ -132,13 +120,18 @@ print(">>> NEURAL PATHWAYS COMPILED...")
 
 # --- 5. EXTERNAL COMMUNICATION INTERFACE (FLASK) ---
 app_flask = Flask(__name__)
+CORS(app_flask) # This line gives the frontend permission to talk to the backend.
 
+@app_flask.route('/')
+def serve_index():
+    """Serves the main HTML page of the web app."""
+    return render_template('index.html')
 
 @app_flask.route('/chat', methods=['POST'])
 def chat():
     print(f"\n[+] INCOMING TRANSMISSION FROM UNKNOWN HOST...")
     data = request.json
-
+    
     messages = []
     for m in data.get('messages', []):
         if m['type'] == 'human':
@@ -151,9 +144,9 @@ def chat():
         "riddle_number": data.get("riddle_number", 0)
     }
     print(f"[+] PROCESSING STATE... RIDDLE_LVL:{current_state.get('riddle_number')}")
-
+    
     response_from_graph = app_langgraph.invoke(current_state)
-
+    
     serializable_messages = []
     for msg in response_from_graph['messages']:
         if isinstance(msg, AIMessage):
@@ -166,10 +159,9 @@ def chat():
         'messages': serializable_messages,
         'riddle_number': response_from_graph.get('riddle_number')
     }
-
+    
     print(f"[+] TRANSMITTING RESPONSE...")
     return jsonify(json_response)
-
 
 if __name__ == '__main__':
     print(">>> COMMUNICATION INTERFACE ONLINE. AWAITING CONNECTION ON PORT 5001...")
