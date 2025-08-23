@@ -13,6 +13,8 @@
             --text-color: #00ff41;
             --border-color: #00ff41;
             --user-color: #00c1d5;
+            --error-color: #ff0040;
+            --warning-color: #ffaa00;
         }
 
         body {
@@ -54,6 +56,8 @@
             flex-direction: column;
             background: rgba(10, 20, 10, 0.1);
             box-shadow: 0 0 15px var(--border-color) inset;
+            position: relative;
+            z-index: 1;
         }
 
         header {
@@ -65,6 +69,33 @@
             animation: header-flicker 2s linear infinite;
         }
 
+        #status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-color);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.error { background: var(--error-color); }
+        .status-dot.warning { background: var(--warning-color); }
+
         #chat-window {
             flex-grow: 1;
             overflow-y: auto;
@@ -73,13 +104,30 @@
             font-size: 1.2em;
         }
 
-        .message { margin-bottom: 15px; line-height: 1.4; }
+        .message { 
+            margin-bottom: 15px; 
+            line-height: 1.4; 
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+
         .message span { font-weight: bold; }
         .user span { color: var(--user-color); text-shadow: 0 0 5px var(--user-color); }
         .ai span { color: var(--text-color); }
+        .system span { color: var(--warning-color); text-shadow: 0 0 5px var(--warning-color); }
+        .error span { color: var(--error-color); text-shadow: 0 0 5px var(--error-color); }
 
-        #input-container { display: flex; align-items: center; }
-        #input-container::before { content: '>'; margin-right: 10px; font-size: 1.2em; }
+        #input-container { 
+            display: flex; 
+            align-items: center; 
+            position: relative;
+        }
+        
+        #input-container::before { 
+            content: '>'; 
+            margin-right: 10px; 
+            font-size: 1.2em; 
+        }
 
         #message-input {
             flex-grow: 1;
@@ -92,24 +140,50 @@
             text-shadow: inherit;
             caret-color: var(--text-color);
         }
+        
         #message-input:focus { outline: none; }
+        #message-input:disabled { opacity: 0.5; }
 
-       #blinking-cursor {
-         display: inline-block;
-         width: 10px;
-         height: 1.2em;
-        background: var(--text-color);
-        animation: blink 1s step-end infinite;
-       vertical-align: bottom;
-        pointer-events: none;  /* 🚨 This makes sure it never blocks typing */
-       }
+        #blinking-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background: var(--text-color);
+            animation: blink 1s step-end infinite;
+            vertical-align: bottom;
+            pointer-events: none;
+        }
 
+        #loading-indicator {
+            display: none;
+            color: var(--warning-color);
+            text-shadow: 0 0 5px var(--warning-color);
+            margin-left: 10px;
+        }
+
+        .retry-button {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 1em;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin: 5px 0;
+            text-shadow: inherit;
+        }
+
+        .retry-button:hover {
+            background: rgba(0, 255, 65, 0.1);
+        }
 
         /* Animations */
         @keyframes blink { from, to { background: transparent } 50% { background: var(--text-color); } }
         @keyframes text-flicker { 0% { opacity: 0.8; } 2% { opacity: 1; } 8% { opacity: 0.7; } 9% { opacity: 1; } 12% { opacity: 0.6; } 20% { opacity: 1; } 100% { opacity: 1; } }
         @keyframes header-flicker { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         @keyframes scanline-flicker { 0% { opacity: 1; } 50% { opacity: 0.95; } 100% { opacity: 1; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     </style>
 </head>
@@ -118,85 +192,285 @@
         <header>
             <h1>W.O.P.R. TERMINAL ACCESS</h1>
         </header>
-        <div id="chat-window">
-            <div class="message ai"><span>W.O.P.R:</span> &gt; ESTABLISHING CONNECTION...</div>
+        
+        <div id="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="connection-status"></div>
+                <span id="connection-text">CONNECTING...</span>
+            </div>
+            <div class="status-indicator">
+                <span id="system-status">INITIALIZING</span>
+            </div>
         </div>
+
+        <div id="chat-window">
+            <div class="message system"><span>SYSTEM:</span> &gt; ESTABLISHING CONNECTION TO W.O.P.R...</div>
+        </div>
+        
         <form id="input-form">
             <div id="input-container">
-                <input type="text" id="message-input" autocomplete="off" required>
+                <input type="text" id="message-input" autocomplete="off" required disabled>
                 <span id="blinking-cursor"></span>
+                <div id="loading-indicator">PROCESSING...</div>
             </div>
-            <!-- Hidden submit button -->
             <button type="submit" style="display: none;"></button>
         </form>
     </div>
 
     <script>
-        const chatWindow = document.getElementById('chat-window');
-        const inputForm = document.getElementById('input-form');
-        const messageInput = document.getElementById('message-input');
-
-        // IMPORTANT: Replace this with your live Railway URL
-        const API_URL = "https://retrochatbot-production.up.railway.app/chat";
-
-        let gameState = { messages: [], riddle_number: 0 };
-
-        function addMessage(sender, text) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message', sender);
-            messageElement.innerHTML = `<span>${sender === 'ai' ? 'W.O.P.R' : 'USER'}:</span> &gt; ${text.replace(/\n/g, '<br>&gt; ')}`;
-            chatWindow.appendChild(messageElement);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
-
-        async function callChatAPI(state) {
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(state)
+        class WOPRInterface {
+            constructor() {
+                this.chatWindow = document.getElementById('chat-window');
+                this.inputForm = document.getElementById('input-form');
+                this.messageInput = document.getElementById('message-input');
+                this.loadingIndicator = document.getElementById('loading-indicator');
+                this.connectionStatus = document.getElementById('connection-status');
+                this.connectionText = document.getElementById('connection-text');
+                this.systemStatus = document.getElementById('system-status');
+                
+                this.API_URL = "https://retrochatbot-production.up.railway.app/chat";
+                this.HEALTH_URL = "https://retrochatbot-production.up.railway.app/health";
+                
+                this.gameState = { messages: [], riddle_number: 0 };
+                this.isConnected = false;
+                this.maxRetries = 3;
+                this.retryCount = 0;
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.checkSystemHealth();
+            }
+            
+            setupEventListeners() {
+                this.inputForm.addEventListener('submit', (e) => this.handleSubmit(e));
+                
+                // Add keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 'r') {
+                        e.preventDefault();
+                        this.checkSystemHealth();
+                    }
                 });
-                if (!response.ok) {
-                    addMessage('ai', 'SYSTEM ERROR: CONNECTION TO HOST LOST.');
-                    return null;
+            }
+            
+            updateConnectionStatus(status, text) {
+                this.connectionStatus.className = `status-dot ${status}`;
+                this.connectionText.textContent = text;
+                this.isConnected = status === '';
+            }
+            
+            updateSystemStatus(text) {
+                this.systemStatus.textContent = text;
+            }
+            
+            async checkSystemHealth() {
+                try {
+                    this.updateConnectionStatus('warning', 'CHECKING...');
+                    this.updateSystemStatus('HEALTH CHECK');
+                    
+                    const response = await fetch(this.HEALTH_URL, {
+                        method: 'GET',
+                        timeout: 10000
+                    });
+                    
+                    if (response.ok) {
+                        const healthData = await response.json();
+                        this.updateConnectionStatus('', 'ONLINE');
+                        this.updateSystemStatus(healthData.ai_available ? 'AI ACTIVE' : 'FALLBACK MODE');
+                        
+                        if (!healthData.ai_available) {
+                            this.addMessage('system', 'WARNING: AI MODE UNAVAILABLE - USING FALLBACK LOGIC');
+                        }
+                        
+                        await this.startGame();
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error('Health check failed:', error);
+                    this.updateConnectionStatus('error', 'DEGRADED');
+                    this.updateSystemStatus('HEALTH CHECK FAILED');
+                    this.addMessage('error', `HEALTH CHECK FAILED: ${error.message}`);
+                    this.showRetryOption();
                 }
-                return response.json();
-            } catch (error) {
-                addMessage('ai', 'SYSTEM ERROR: NETWORK FAILURE.');
-                return null;
+            }
+            
+            addMessage(sender, text, animated = true) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message', sender);
+                
+                const senderLabel = {
+                    'ai': 'W.O.P.R',
+                    'user': 'USER',
+                    'system': 'SYSTEM',
+                    'error': 'ERROR'
+                }[sender] || 'UNKNOWN';
+                
+                messageElement.innerHTML = `<span>${senderLabel}:</span> &gt; ${text.replace(/\n/g, '<br>&gt; ')}`;
+                
+                if (!animated) {
+                    messageElement.style.opacity = '1';
+                }
+                
+                this.chatWindow.appendChild(messageElement);
+                this.chatWindow.scrollTop = this.chatWindow.scrollHeight;
+            }
+            
+            showLoading(show) {
+                this.loadingIndicator.style.display = show ? 'block' : 'none';
+                this.messageInput.disabled = show;
+            }
+            
+            showRetryOption() {
+                const retryButton = document.createElement('button');
+                retryButton.className = 'retry-button';
+                retryButton.textContent = '↻ RETRY CONNECTION';
+                retryButton.onclick = () => {
+                    retryButton.remove();
+                    this.checkSystemHealth();
+                };
+                
+                const retryContainer = document.createElement('div');
+                retryContainer.className = 'message system';
+                retryContainer.innerHTML = '<span>SYSTEM:</span> &gt; ';
+                retryContainer.appendChild(retryButton);
+                
+                this.chatWindow.appendChild(retryContainer);
+                this.chatWindow.scrollTop = this.chatWindow.scrollHeight;
+            }
+            
+            async callChatAPI(state, attempt = 1) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000);
+                    
+                    const response = await fetch(this.API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(state),
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Reset retry count on success
+                    this.retryCount = 0;
+                    this.updateConnectionStatus('', 'ONLINE');
+                    
+                    return data;
+                    
+                } catch (error) {
+                    console.error(`API call attempt ${attempt} failed:`, error);
+                    
+                    if (attempt < this.maxRetries) {
+                        this.addMessage('system', `CONNECTION ATTEMPT ${attempt} FAILED - RETRYING...`);
+                        this.updateConnectionStatus('warning', 'RETRYING...');
+                        
+                        // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                        return this.callChatAPI(state, attempt + 1);
+                    } else {
+                        this.updateConnectionStatus('error', 'FAILED');
+                        this.addMessage('error', `CONNECTION FAILED AFTER ${this.maxRetries} ATTEMPTS: ${error.message}`);
+                        this.showRetryOption();
+                        return null;
+                    }
+                }
+            }
+            
+            async startGame() {
+                try {
+                    this.updateSystemStatus('STARTING GAME');
+                    this.showLoading(true);
+                    
+                    const initialState = { messages: [], riddle_number: 0 };
+                    const newState = await this.callChatAPI(initialState);
+                    
+                    if (newState) {
+                        this.gameState = newState;
+                        const aiMessage = newState.messages[0].content;
+                        
+                        // Clear initial messages
+                        this.chatWindow.innerHTML = '';
+                        this.addMessage('ai', aiMessage);
+                        
+                        this.messageInput.disabled = false;
+                        this.messageInput.focus();
+                        this.updateSystemStatus('GAME ACTIVE');
+                        
+                        // Add helpful instructions
+                        this.addMessage('system', 'COMMANDS: Type answers to riddles | CTRL+R to check health | "quit" to exit');
+                    }
+                } catch (error) {
+                    this.addMessage('error', `GAME INITIALIZATION FAILED: ${error.message}`);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+            
+            async handleSubmit(e) {
+                e.preventDefault();
+                const userMessage = this.messageInput.value.trim();
+                if (!userMessage) return;
+                
+                // Handle special commands
+                if (userMessage.toLowerCase() === 'quit' || userMessage.toLowerCase() === 'exit') {
+                    this.addMessage('user', userMessage);
+                    this.addMessage('system', 'CONNECTION TO W.O.P.R. TERMINATED BY USER');
+                    this.messageInput.disabled = true;
+                    this.updateSystemStatus('DISCONNECTED');
+                    this.updateConnectionStatus('error', 'DISCONNECTED');
+                    return;
+                }
+                
+                if (userMessage.toLowerCase() === 'health') {
+                    this.addMessage('user', userMessage);
+                    this.checkSystemHealth();
+                    this.messageInput.value = '';
+                    return;
+                }
+                
+                this.addMessage('user', userMessage);
+                this.messageInput.value = '';
+                this.showLoading(true);
+                
+                // Update game state
+                this.gameState.messages.push({ type: 'human', content: userMessage });
+                
+                const newState = await this.callChatAPI(this.gameState);
+                
+                if (newState) {
+                    this.gameState = newState;
+                    const aiMessage = newState.messages[newState.messages.length - 1].content;
+                    this.addMessage('ai', aiMessage);
+                    
+                    // Check if game is complete
+                    if (aiMessage.includes('SECRET KEY')) {
+                        this.updateSystemStatus('GAME COMPLETE');
+                        this.addMessage('system', 'LOGIC TEST COMPLETED - W.O.P.R. STANDING BY');
+                        this.messageInput.disabled = true;
+                    }
+                }
+                
+                this.showLoading(false);
+                this.messageInput.focus();
             }
         }
-
-        inputForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const userMessage = messageInput.value.trim();
-            if (!userMessage) return;
-
-            addMessage('user', userMessage);
-            messageInput.value = '';
-
-            gameState.messages.push({ type: 'human', content: userMessage });
-
-            const newState = await callChatAPI(gameState);
-            if (newState) {
-                gameState = newState;
-                const aiMessage = newState.messages[newState.messages.length - 1].content;
-                addMessage('ai', aiMessage);
-            }
+        
+        // Initialize the interface when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new WOPRInterface();
         });
-
-        async function startGame() {
-            const initialState = { messages: [], riddle_number: 0 };
-            const newState = await callChatAPI(initialState);
-            if (newState) {
-                gameState = newState;
-                const aiMessage = newState.messages[0].content;
-                chatWindow.innerHTML = ''; // Clear the "Establishing Connection..." message
-                addMessage('ai', aiMessage);
-            }
-        }
-
-        startGame();
     </script>
 </body>
 </html>
+
