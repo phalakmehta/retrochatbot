@@ -2,7 +2,7 @@ import requests
 import json
 
 # The URL where your Flask app is running
-URL = "http://127.0.0.1:5001/chat"
+URL = "retrochatbot-production.up.railway.app/chat"
 
 
 def main():
@@ -66,3 +66,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
