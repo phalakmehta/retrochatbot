@@ -94,13 +94,16 @@
         }
         #message-input:focus { outline: none; }
 
-        #blinking-cursor {
-            width: 10px;
-            height: 1.2em;
-            background: var(--text-color);
-            display: inline-block;
-            animation: blink 1s step-end infinite;
-        }
+       #blinking-cursor {
+         display: inline-block;
+         width: 10px;
+         height: 1.2em;
+        background: var(--text-color);
+        animation: blink 1s step-end infinite;
+       vertical-align: bottom;
+        pointer-events: none;  /* 🚨 This makes sure it never blocks typing */
+       }
+
 
         /* Animations */
         @keyframes blink { from, to { background: transparent } 50% { background: var(--text-color); } }
@@ -121,7 +124,7 @@
         <form id="input-form">
             <div id="input-container">
                 <input type="text" id="message-input" autocomplete="off" required>
-                <div id="blinking-cursor"></div>
+                <span id="blinking-cursor"></span>
             </div>
             <!-- Hidden submit button -->
             <button type="submit" style="display: none;"></button>
