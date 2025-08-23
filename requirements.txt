@@ -6,6 +6,7 @@ gunicorn
 Flask
 flask-cors
 requests
+Werkzeug
 
 
 
