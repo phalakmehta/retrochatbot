@@ -163,11 +163,20 @@
             background: rgba(0, 255, 65, 0.2);
             transform: translateY(-1px);
         }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
         .controls {
             display: flex;
             gap: 10px;
             margin-top: 15px;
             justify-content: center;
+        }
+        .loading {
+            opacity: 0.6;
+            animation: pulse 1s infinite;
         }
         @keyframes glow {
             from { text-shadow: 0 0 10px #00ff41; }
@@ -298,6 +307,208 @@
             }
             
             addMessage('user', message);
+            input.value = '';
+            input.disabled = true;
+            document.getElementById('send-btn').disabled = true;
+            
+            // Add user message to game state
+            gameState.messages.push({
+                type: 'human',
+                content: message
+            });
+            
+            try {
+                updateConnectionStatus('PROCESSING');
+                
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(gameState)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                gameState = data;
+                updateUI();
+                
+                // Get the latest AI message
+                const aiMsg = data.messages[data.messages.length - 1];
+                if (aiMsg && aiMsg.type === 'ai') {
+                    addMessage('ai', aiMsg.content);
+                }
+                
+                updateConnectionStatus('ONLINE');
+                
+            } catch (error) {
+                console.error('Send error:', error);
+                addMessage('system', `Error: ${error.message}`);
+                updateConnectionStatus('ERROR');
+            } finally {
+                input.disabled = false;
+                document.getElementById('send-btn').disabled = false;
+                input.focus();
+            }
+        }
+        
+        function addMessage(type, content) {
+            const chatWindow = document.getElementById('chat-window');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            let headerText = '';
+            switch(type) {
+                case 'ai': headerText = 'W.O.P.R.'; break;
+                case 'user': headerText = 'USER'; break;
+                case 'system': headerText = 'SYSTEM'; break;
+            }
+            
+            // Check for secret keys and format them specially
+            let formattedContent = content;
+            if (content.includes('SECRET KEY') || content.includes('GDG-GEMINI')) {
+                const keyMatch = content.match(/(GDG-GEMINI-[\w-]+)/);
+                if (keyMatch) {
+                    formattedContent = content.replace(keyMatch[1], 
+                        `<div class="secret-key">🔑 ${keyMatch[1]} 🔑</div>`);
+                }
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">${headerText}</div>
+                <div>${formattedContent.replace(/\n/g, '<br>')}</div>
+            `;
+            
+            chatWindow.appendChild(messageDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+        
+        function clearChat() {
+            const chatWindow = document.getElementById('chat-window');
+            chatWindow.innerHTML = '';
+        }
+        
+        function updateUI() {
+            // Update trust level
+            const trustLevel = gameState.trust_level || 0.0;
+            document.getElementById('trust-level').textContent = `${trustLevel.toFixed(2)}/1.0`;
+            
+            // Update personality with color
+            const personality = (gameState.personality_state || 'cold').toUpperCase();
+            const personalityElement = document.getElementById('personality-status');
+            personalityElement.textContent = personality;
+            personalityElement.className = `status-value personality-${gameState.personality_state || 'cold'}`;
+            
+            // Update progress
+            const riddlesCompleted = gameState.context?.riddles_completed || 0;
+            document.getElementById('progress-status').textContent = `${riddlesCompleted}/5`;
+        }
+        
+        function updateConnectionStatus(status) {
+            const statusElement = document.getElementById('connection-status');
+            statusElement.textContent = status;
+            
+            switch(status) {
+                case 'ONLINE':
+                    statusElement.style.color = '#00ff41';
+                    break;
+                case 'CONNECTING':
+                case 'PROCESSING':
+                    statusElement.style.color = '#ffaa00';
+                    statusElement.classList.add('loading');
+                    break;
+                case 'ERROR':
+                    statusElement.style.color = '#ff6b6b';
+                    statusElement.classList.remove('loading');
+                    break;
+                default:
+                    statusElement.style.color = '#00c1d5';
+                    statusElement.classList.remove('loading');
+            }
+        }
+        
+        async function checkHealth() {
+            try {
+                updateConnectionStatus('CHECKING');
+                const response = await fetch(`${API_BASE}/health`);
+                const health = await response.json();
+                
+                addMessage('system', `System Status: ${health.status?.toUpperCase() || 'UNKNOWN'}\n` +
+                    `AI Available: ${health.ai_available ? 'YES' : 'NO'}\n` +
+                    `Quota Used: ${health.daily_requests || 0}/${health.quota_limit || 'Unknown'}\n` +
+                    `Fallback Mode: ${health.fallback_mode ? 'ACTIVE' : 'INACTIVE'}`);
+                
+                updateConnectionStatus(health.status === 'operational' ? 'ONLINE' : 'ERROR');
+                
+            } catch (error) {
+                console.error('Health check error:', error);
+                addMessage('system', `Health check failed: ${error.message}`);
+                updateConnectionStatus('ERROR');
+            }
+        }
+        
+        async function showAssessmentInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/assessment-info`);
+                const info = await response.json();
+                
+                addMessage('system', 
+                    `📋 GDG ASSESSMENT INFO:\n` +
+                    `Project: ${info.project}\n` +
+                    `Category: ${info.gdg_category}\n` +
+                    `Objective: ${info.objective}\n\n` +
+                    `🎯 Key Features:\n` +
+                    `• AI-Powered Intelligence\n` +
+                    `• Personality Development\n` +
+                    `• Progressive Disclosure\n` +
+                    `• Adaptive Learning\n` +
+                    `• Quota Protection`);
+                
+            } catch (error) {
+                console.error('Assessment info error:', error);
+                addMessage('system', `Could not load assessment info: ${error.message}`);
+            }
+        }
+        
+        function resetGame() {
+            if (confirm('Reset the entire session? Your progress will be lost.')) {
+                gameState = {
+                    messages: [],
+                    riddle_number: 0,
+                    trust_level: 0.0,
+                    personality_state: 'cold',
+                    context: {}
+                };
+                
+                clearChat();
+                addMessage('system', 'Session reset. Reinitializing W.O.P.R...');
+                setTimeout(initGame, 1000);
+            }
+        }
+        
+        // Handle Enter key
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('user-input');
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !input.disabled) {
+                    sendMessage();
+                }
+            });
+            
+            // Initialize game on load
+            setTimeout(initGame, 1000);
+        });
+        
+        // Error handling for unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            addMessage('system', 'Unexpected error occurred. Try refreshing the page.');
+            updateConnectionStatus('ERROR');
+        });
+    </script>
+</body>
+</html>
 
 
 
