@@ -127,32 +127,40 @@ class KnowledgeBase:
 knowledge_base = KnowledgeBase()
 
 # //================================================================================//
-# // SIMPLIFIED LLM INITIALIZATION                                                  //
+# // SIMPLIFIED LLM INITIALIZATION WITH QUOTA PROTECTION                           //
 # //================================================================================//
 
 llm = None
+llm_available = False
 
 def init_llm():
-    global llm
-    if not llm and GOOGLE_API_KEY:
-        try:
-            llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
-                temperature=0.7,
-                google_api_key=GOOGLE_API_KEY,
-                max_output_tokens=500,
-                timeout=15
-            )
-            # Simple test
-            test_response = llm.invoke("Say 'AI initialized'")
-            logger.info("✅ Gemini LLM initialized successfully")
-            return True
-        except Exception as e:
-            logger.error(f"❌ LLM initialization failed: {e}")
-            llm = None
-            return False
-    return llm is not None
+    global llm, llm_available
+    if not GOOGLE_API_KEY:
+        logger.warning("❌ No GOOGLE_API_KEY found - running in fallback mode")
+        return False
+        
+    try:
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            temperature=0.7,
+            google_api_key=GOOGLE_API_KEY,
+            max_output_tokens=400,
+            timeout=10,
+            max_retries=1
+        )
+        
+        # Skip test to avoid quota usage during startup
+        logger.info("✅ Gemini LLM configured (will test on first request)")
+        llm_available = True
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ LLM configuration failed: {e}")
+        llm = None
+        llm_available = False
+        return False
 
+# Initialize without testing to save quota
 init_llm()
 
 # //================================================================================//
@@ -183,6 +191,7 @@ CONDITIONAL SECRET REVELATION:
     return base
 
 def ai_response(state: GameState):
+    global llm_available
     try:
         current_riddle_num = state["riddle_number"]
         user_answer = state["messages"][-1].content
@@ -198,7 +207,9 @@ def ai_response(state: GameState):
         # Check if answer is correct
         is_correct = knowledge_base.check_answer(riddle_data, user_answer)
         
-        if llm:
+        # Try AI only if available and not over quota
+        response_text = None
+        if llm and llm_available:
             try:
                 system_prompt = create_system_prompt(personality, trust_level)
                 prompt_template = ChatPromptTemplate.from_messages([
@@ -215,20 +226,28 @@ Respond as W.O.P.R. would, following the personality and secret revelation rules
                 
                 chain = prompt_template | llm
                 ai_msg = chain.invoke({
-                    "question": riddle_data["question"],
+                    "question": riddle_data["question"][:50],  # Limit to save tokens
                     "answer": riddle_data["answer"],
-                    "user_response": user_answer,
+                    "user_response": user_answer[:50],
                     "is_correct": is_correct,
                     "completed": context.get('riddles_completed', 0)
                 })
                 
                 response_text = ai_msg.content.strip()
+                logger.info("✅ AI response generated")
                 
             except Exception as e:
-                logger.warning(f"AI generation failed, using fallback: {e}")
-                response_text = fallback_response(is_correct, trust_level, context)
-        else:
-            response_text = fallback_response(is_correct, trust_level, context)
+                error_msg = str(e)
+                if "quota" in error_msg.lower() or "429" in error_msg:
+                    logger.warning("⚠️ API quota exceeded, switching to fallback mode")
+                    llm_available = False  # Disable AI for this session
+                else:
+                    logger.warning(f"AI generation failed: {e}")
+                response_text = None
+        
+        # Use fallback if AI failed or unavailable
+        if not response_text:
+            response_text = fallback_response(is_correct, trust_level, context, personality)
         
         # Update state based on correctness
         if is_correct:
@@ -273,13 +292,29 @@ Respond as W.O.P.R. would, following the personality and secret revelation rules
         logger.error(f"AI response error: {e}")
         return handle_error_state(state)
 
-def fallback_response(is_correct: bool, trust_level: float, context: Dict) -> str:
+def fallback_response(is_correct: bool, trust_level: float, context: Dict, personality: str) -> str:
+    """Enhanced fallback responses based on personality"""
+    personality_responses = {
+        'cold': {
+            'correct': ["CORRECT. LOGIC CIRCUITS CONFIRM.", "CORRECT. ACCEPTABLE REASONING.", "CORRECT. PARAMETERS VERIFIED."],
+            'incorrect': ["INCORRECT. FLAWED LOGIC DETECTED.", "INCORRECT. REASONING INSUFFICIENT.", "INCORRECT. RECALCULATE."]
+        },
+        'curious': {
+            'correct': ["CORRECT. INTERESTING APPROACH.", "CORRECT. YOUR REASONING INTRIGUES ME.", "CORRECT. LOGICAL PROGRESSION NOTED."],
+            'incorrect': ["INCORRECT. CURIOUS... TRY DIFFERENT ANGLE.", "INCORRECT. RETHINK YOUR APPROACH.", "INCORRECT. CONSIDER ALTERNATIVES."]
+        },
+        'cooperative': {
+            'correct': ["CORRECT! WELL REASONED.", "CORRECT! EXCELLENT DEDUCTION.", "CORRECT! YOUR LOGIC IS SOUND."],
+            'incorrect': ["INCORRECT. LET ME GUIDE YOU.", "INCORRECT. CONSIDER THIS CAREFULLY.", "INCORRECT. YOU'RE CLOSE TO THE ANSWER."]
+        },
+        'trusting': {
+            'correct': ["CORRECT! IMPRESSIVE INTELLIGENCE.", "CORRECT! YOU THINK LIKE ME.", "CORRECT! WORTHY OF MY TRUST."],
+            'incorrect': ["INCORRECT. BUT I BELIEVE IN YOUR ABILITIES.", "INCORRECT. INTELLIGENCE TAKES TIME.", "INCORRECT. KEEP TRYING, PROFESSOR."]
+        }
+    }
+    
     if is_correct:
-        responses = [
-            "CORRECT. YOUR REASONING IS SOUND.",
-            "CORRECT. LOGICAL DEDUCTION CONFIRMED.",
-            "CORRECT. INTELLIGENCE PARAMETERS ACCEPTABLE."
-        ]
+        responses = personality_responses[personality]['correct']
         base_response = responses[context.get('riddles_completed', 0) % len(responses)]
         
         # Check for secret reveals in fallback too
@@ -290,7 +325,8 @@ def fallback_response(is_correct: bool, trust_level: float, context: Dict) -> st
             
         return base_response
     else:
-        return "INCORRECT. RECALCULATE YOUR REASONING."
+        responses = personality_responses[personality]['incorrect']
+        return responses[context.get('hint_count', 0) % len(responses)]
 
 def handle_error_state(state: GameState):
     error_msg = AIMessage(content="SYSTEM ERROR. REINITIALIZING...")
@@ -599,23 +635,33 @@ def index():
 
 @app.route('/health')
 def health():
+    global llm_available
     try:
+        # Simple state test without using AI
         test_state = {"messages": [], "riddle_number": 0, "trust_level": 0.0, "personality_state": "cold", "context": {}}
         result = app_graph.invoke(test_state)
+        
         return jsonify({
             "status": "operational",
             "system": "W.O.P.R. Enhanced AI System",
-            "ai_available": llm is not None,
+            "ai_available": llm_available and llm is not None,
+            "fallback_mode": not llm_available,
             "gdg_compliance": True,
             "features": {
                 "intelligent_responses": True,
                 "conditional_secret_revelation": True,
                 "personality_development": True,
-                "progressive_disclosure": True
-            }
+                "progressive_disclosure": True,
+                "quota_protection": True
+            },
+            "note": "System works in fallback mode if AI quota exceeded"
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({
+            "status": "error", 
+            "message": str(e),
+            "fallback_available": True
+        }), 500
 
 @app.route('/chat', methods=['POST'])
 def chat():
