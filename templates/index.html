@@ -1,950 +1,303 @@
-# Enhanced Client Interface for GDG Assessment
-
-## Enhanced HTML Template (replace templates/index.html)
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>W.O.P.R. Enhanced AI System - GDG Assessment</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary-green: #00ff41;
-            --secondary-cyan: #00c1d5;
-            --warning-orange: #ffaa00;
-            --error-red: #ff0040;
-            --dark-bg: #0c0c0c;
-            --personality-cold: #4a90e2;
-            --personality-curious: #f39c12;
-            --personality-cooperative: #27ae60;
-            --personality-trusting: #e74c3c;
-        }
-
-        body {
-            font-family: 'VT323', monospace;
-            background: linear-gradient(135deg, var(--dark-bg) 0%, #1a1a2e 100%);
-            color: var(--primary-green);
-            margin: 0;
+        body { 
+            font-family: 'Courier New', monospace; 
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
+            color: #00ff41; 
+            margin: 0; 
             padding: 20px;
             min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
         }
-
-        /* Enhanced CRT effect */
-        body::before {
-            content: " ";
-            display: block;
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background: 
-                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-            animation: scanline 0.1s linear infinite;
-        }
-
-        #app-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            border: 2px solid var(--primary-green);
-            border-radius: 10px;
-            background: rgba(10, 20, 10, 0.15);
-            backdrop-filter: blur(5px);
-            box-shadow: 0 0 30px var(--primary-green);
-            position: relative;
-            z-index: 1;
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            border: 2px solid #00ff41; 
+            border-radius: 10px; 
+            background: rgba(10, 20, 10, 0.8);
             min-height: 90vh;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 0 30px #00ff41;
         }
-
-        header {
-            text-align: center;
-            padding: 20px;
-            border-bottom: 2px solid var(--primary-green);
+        .header { 
+            text-align: center; 
+            padding: 20px; 
+            border-bottom: 2px solid #00ff41;
             background: rgba(0, 255, 65, 0.05);
         }
-
-        header h1 {
-            font-family: 'Orbitron', monospace;
+        .header h1 { 
+            margin: 0; 
+            text-shadow: 0 0 10px #00ff41;
             font-size: 2.2em;
-            margin: 0;
-            text-shadow: 0 0 10px var(--primary-green);
             animation: glow 2s ease-in-out infinite alternate;
         }
-
         .subtitle {
+            color: #00c1d5;
+            margin-top: 10px;
             font-size: 1.1em;
-            color: var(--secondary-cyan);
-            margin-top: 5px;
-            opacity: 0.8;
         }
-
-        #enhanced-status-panel {
+        .status { 
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            padding: 15px;
-            border-bottom: 1px solid var(--primary-green);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            padding: 15px; 
+            border-bottom: 1px solid #00ff41;
             background: rgba(0, 0, 0, 0.3);
-        }
-
-        .status-card {
-            background: rgba(0, 255, 65, 0.1);
-            border: 1px solid var(--primary-green);
-            border-radius: 5px;
-            padding: 10px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .status-card:hover {
-            background: rgba(0, 255, 65, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .status-label {
             font-size: 0.9em;
+        }
+        .status-item {
+            background: rgba(0, 255, 65, 0.1);
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+            border: 1px solid #00ff41;
+        }
+        .status-label {
+            display: block;
             opacity: 0.7;
-            display: block;
+            font-size: 0.8em;
         }
-
         .status-value {
-            font-size: 1.3em;
-            font-weight: bold;
             display: block;
-            margin-top: 5px;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-top: 2px;
         }
-
-        #trust-level {
-            color: var(--warning-orange);
-        }
-
-        .personality-cold { color: var(--personality-cold); }
-        .personality-curious { color: var(--personality-curious); }
-        .personality-cooperative { color: var(--personality-cooperative); }
-        .personality-trusting { color: var(--personality-trusting); }
-
-        #chat-window {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 20px;
-            font-size: 1.1em;
+        .chat { 
+            flex-grow: 1; 
+            overflow-y: auto; 
+            padding: 20px; 
             line-height: 1.6;
         }
-
-        .message {
-            margin: 15px 0;
+        .message { 
+            margin: 15px 0; 
+            padding: 15px; 
+            border-radius: 8px; 
             opacity: 0;
-            animation: fadeInMessage 0.5s forwards;
-            padding: 10px;
-            border-radius: 5px;
-            position: relative;
+            animation: fadeIn 0.5s forwards;
         }
-
-        .message.ai {
-            background: rgba(0, 255, 65, 0.05);
-            border-left: 3px solid var(--primary-green);
-            margin-left: 0;
+        .message.ai { 
+            background: rgba(0, 255, 65, 0.05); 
+            border-left: 4px solid #00ff41; 
             margin-right: 20px;
         }
-
-        .message.user {
-            background: rgba(0, 193, 213, 0.05);
-            border-left: 3px solid var(--secondary-cyan);
+        .message.user { 
+            background: rgba(0, 193, 213, 0.05); 
+            border-left: 4px solid #00c1d5; 
             margin-left: 20px;
-            margin-right: 0;
         }
-
         .message.system {
             background: rgba(255, 170, 0, 0.05);
-            border-left: 3px solid var(--warning-orange);
+            border-left: 4px solid #ffaa00;
             text-align: center;
             font-style: italic;
         }
-
         .message-header {
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-size: 1.1em;
         }
-
-        .ai .message-header { color: var(--primary-green); }
-        .user .message-header { color: var(--secondary-cyan); }
-        .system .message-header { color: var(--warning-orange); }
-
+        .ai .message-header { color: #00ff41; }
+        .user .message-header { color: #00c1d5; }
+        .system .message-header { color: #ffaa00; }
         .secret-key {
             background: linear-gradient(45deg, #ffaa00, #ff6b6b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: #000;
             font-weight: bold;
-            font-size: 1.2em;
-            animation: pulse 1s infinite;
-            text-align: center;
-            padding: 10px;
-            border: 2px solid #ffaa00;
+            padding: 15px;
             border-radius: 10px;
-            margin: 10px 0;
+            text-align: center;
+            margin: 15px 0;
+            animation: pulse 1s infinite;
+            border: 2px solid #ffaa00;
         }
-
-        #input-section {
-            border-top: 2px solid var(--primary-green);
+        .input-section { 
+            border-top: 2px solid #00ff41; 
+            padding: 20px; 
             background: rgba(0, 0, 0, 0.4);
-            padding: 20px;
         }
-
-        #input-container {
-            display: flex;
+        .input-row { 
+            display: flex; 
+            gap: 10px; 
             align-items: center;
-            background: rgba(0, 255, 65, 0.1);
+        }
+        .input-prompt {
+            color: #00c1d5;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        input { 
+            flex-grow: 1; 
+            background: rgba(0, 255, 65, 0.1); 
+            border: 1px solid #00ff41; 
+            color: #00ff41; 
+            padding: 12px; 
+            font-family: inherit; 
             border-radius: 5px;
-            padding: 10px;
-            border: 1px solid var(--primary-green);
+            font-size: 1.1em;
         }
-
-        #message-input {
-            flex-grow: 1;
-            background: transparent;
-            border: none;
-            color: var(--primary-green);
-            font-family: inherit;
-            font-size: 1.2em;
-            padding: 10px;
+        input:focus {
             outline: none;
+            box-shadow: 0 0 10px #00ff41;
         }
-
-        #message-input::placeholder {
+        input::placeholder {
             color: rgba(0, 255, 65, 0.5);
         }
-
-        .input-prompt {
-            color: var(--secondary-cyan);
-            font-size: 1.3em;
-            margin-right: 10px;
+        button { 
+            background: transparent; 
+            border: 1px solid #00ff41; 
+            color: #00ff41; 
+            padding: 12px 20px; 
+            cursor: pointer; 
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 1em;
+            transition: all 0.3s ease;
         }
-
-        .action-buttons {
+        button:hover { 
+            background: rgba(0, 255, 65, 0.2);
+            transform: translateY(-1px);
+        }
+        .controls {
             display: flex;
             gap: 10px;
             margin-top: 15px;
             justify-content: center;
         }
-
-        .action-btn {
-            background: transparent;
-            border: 1px solid var(--primary-green);
-            color: var(--primary-green);
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-family: inherit;
-            font-size: 1em;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .action-btn:hover {
-            background: rgba(0, 255, 65, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .progress-bar {
-            height: 4px;
-            background: rgba(0, 255, 65, 0.2);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-green), var(--secondary-cyan));
-            transition: width 0.5s ease;
-        }
-
         @keyframes glow {
-            from { text-shadow: 0 0 10px var(--primary-green); }
-            to { text-shadow: 0 0 20px var(--primary-green), 0 0 30px var(--primary-green); }
+            from { text-shadow: 0 0 10px #00ff41; }
+            to { text-shadow: 0 0 20px #00ff41, 0 0 30px #00ff41; }
         }
-
-        @keyframes fadeInMessage {
+        @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+            50% { opacity: 0.8; }
         }
-
-        @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100vh); }
-        }
-
-        /* Responsive design */
+        .personality-cold { color: #4a90e2; }
+        .personality-curious { color: #f39c12; }
+        .personality-cooperative { color: #27ae60; }
+        .personality-trusting { color: #e74c3c; }
+        
         @media (max-width: 768px) {
-            #enhanced-status-panel {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            header h1 {
-                font-size: 1.8em;
-            }
-            
-            .message {
-                margin-left: 0;
-                margin-right: 0;
-            }
+            .status { grid-template-columns: repeat(2, 1fr); }
+            .message { margin-left: 0; margin-right: 0; }
+            .input-row { flex-direction: column; }
+            input { margin: 10px 0; }
         }
     </style>
 </head>
 <body>
-    <div id="app-container">
-        <header>
+    <div class="container">
+        <div class="header">
             <h1>W.O.P.R. ENHANCED AI SYSTEM</h1>
             <div class="subtitle">GDG Technical Assessment - Intelligent Query System</div>
-        </header>
+        </div>
         
-        <div id="enhanced-status-panel">
-            <div class="status-card">
+        <div class="status">
+            <div class="status-item">
                 <span class="status-label">CONNECTION</span>
                 <span class="status-value" id="connection-status">INITIALIZING</span>
             </div>
-            <div class="status-card">
+            <div class="status-item">
                 <span class="status-label">TRUST LEVEL</span>
                 <span class="status-value" id="trust-level">0.0/1.0</span>
             </div>
-            <div class="status-card">
+            <div class="status-item">
                 <span class="status-label">PERSONALITY</span>
                 <span class="status-value" id="personality-status">COLD</span>
             </div>
-            <div class="status-card">
+            <div class="status-item">
                 <span class="status-label">PROGRESS</span>
                 <span class="status-value" id="progress-status">0/5</span>
             </div>
         </div>
         
-        <div id="chat-window">
+        <div class="chat" id="chat-window">
             <div class="message system">
                 <div class="message-header">SYSTEM INITIALIZATION</div>
-                <div>&gt; Establishing connection to W.O.P.R. Enhanced AI System...</div>
-                <div>&gt; Loading personality matrix and learning algorithms...</div>
-                <div>&gt; Preparing GDG technical assessment protocol...</div>
+                <div>Establishing connection to W.O.P.R. Enhanced AI System...</div>
+                <div>Loading personality matrix and assessment protocols...</div>
             </div>
         </div>
         
-        <div id="input-section">
-            <form id="input-form">
-                <div id="input-container">
-                    <span class="input-prompt">&gt;</span>
-                    <input type="text" id="message-input" 
-                           placeholder="Enter your response..." 
-                           autocomplete="off" disabled>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
-                </div>
-                <div class="action-buttons">
-                    <button type="button" class="action-btn" id="health-btn">SYSTEM STATUS</button>
-                    <button type="button" class="action-btn" id="assessment-btn">ASSESSMENT INFO</button>
-                    <button type="button" class="action-btn" id="reset-btn">RESET SESSION</button>
-                </div>
-            </form>
+        <div class="input-section">
+            <div class="input-row">
+                <span class="input-prompt">&gt;</span>
+                <input type="text" id="user-input" placeholder="Enter your response..." disabled>
+                <button onclick="sendMessage()" id="send-btn">SEND</button>
+            </div>
+            <div class="controls">
+                <button onclick="checkHealth()">SYSTEM STATUS</button>
+                <button onclick="showAssessmentInfo()">ASSESSMENT INFO</button>
+                <button onclick="resetGame()">RESET SESSION</button>
+            </div>
         </div>
     </div>
 
     <script>
-        class EnhancedWOPRInterface {
-            constructor() {
-                this.API_URL = "https://retrochatbot-production.up.railway.app/chat";
-                this.HEALTH_URL = "https://retrochatbot-production.up.railway.app/health";
-                this.ASSESSMENT_URL = "https://retrochatbot-production.up.railway.app/assessment-info";
-                
-                this.enhancedState = {
-                    messages: [],
-                    riddle_number: 0,
-                    trust_level: 0.0,
-                    personality_state: "cold",
-                    conversation_context: {},
-                    user_profile: {},
-                    learning_data: {}
-                };
-                
-                this.init();
-            }
-            
-            init() {
-                this.setupEventListeners();
-                this.checkSystemHealth();
-            }
-            
-            setupEventListeners() {
-                document.getElementById('input-form').addEventListener('submit', (e) => this.handleSubmit(e));
-                document.getElementById('health-btn').addEventListener('click', () => this.checkSystemHealth());
-                document.getElementById('assessment-btn').addEventListener('click', () => this.showAssessmentInfo());
-                document.getElementById('reset-btn').addEventListener('click', () => this.resetSession());
-            }
-            
-            updateStatusPanel() {
-                document.getElementById('trust-level').textContent = `${this.enhancedState.trust_level.toFixed(2)}/1.0`;
-                
-                const personalityEl = document.getElementById('personality-status');
-                personalityEl.textContent = this.enhancedState.personality_state.toUpperCase();
-                personalityEl.className = `status-value personality-${this.enhancedState.personality_state}`;
-                
-                document.getElementById('progress-status').textContent = 
-                    `${this.enhancedState.conversation_context.riddles_completed || 0}/5`;
-                
-                const progressPercent = (this.enhancedState.trust_level * 100);
-                document.getElementById('progress-fill').style.width = `${progressPercent}%`;
-            }
-            
-            addMessage(type, content) {
-                const chatWindow = document.getElementById('chat-window');
-                const messageEl = document.createElement('div');
-                messageEl.className = `message ${type}`;
-                
-                const headerText = {
-                    'ai': 'W.O.P.R',
-                    'user': 'USER',
-                    'system': 'SYSTEM',
-                    'assessment': 'ASSESSMENT'
-                }[type] || 'UNKNOWN';
-                
-                messageEl.innerHTML = `
-                    <div class="message-header">${headerText}</div>
-                    <div>${content.replace(/\n/g, '<br>')}</div>
-                `;
-                
-                // Highlight secret keys
-                if (content.includes('SECRET KEY') || content.includes('GDG-GEMINI')) {
-                    const keyEl = document.createElement('div');
-                    keyEl.className = 'secret-key';
-                    keyEl.innerHTML = '🔑 SECRET KEY REVEALED 🔑';
-                    messageEl.appendChild(keyEl);
-                }
-                
-                chatWindow.appendChild(messageEl);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            }
-            
-            async checkSystemHealth() {
-                try {
-                    document.getElementById('connection-status').textContent = 'CHECKING...';
-                    
-                    const response = await fetch(this.HEALTH_URL);
-                    const health = await response.json();
-                    
-                    if (response.ok && health.status === 'operational') {
-                        document.getElementById('connection-status').textContent = 'ONLINE';
-                        
-                        if (health.gdg_compliance) {
-                            this.addMessage('system', 
-                                `✅ W.O.P.R. Enhanced AI System v3.0 Online<br>
-                                ✅ GDG Assessment Ready<br>
-                                ✅ AI Available: ${health.ai_available}<br>
-                                ✅ Personality System: ${health.personality_system}<br>
-                                ✅ Adaptive Learning: ${health.adaptive_learning}`);
-                        }
-                        
-                        await this.startEnhancedGame();
-                    } else {
-                        throw new Error(health.message || 'System unavailable');
-                    }
-                } catch (error) {
-                    document.getElementById('connection-status').textContent = 'ERROR';
-                    this.addMessage('system', `❌ Connection failed: ${error.message}`);
-                }
-            }
-            
-            async showAssessmentInfo() {
-                try {
-                    const response = await fetch(this.ASSESSMENT_URL);
-                    const info = await response.json();
-                    
-                    let infoText = `📋 GDG TECHNICAL ASSESSMENT COMPLIANCE<br><br>`;
-                    infoText += `🎯 Project: ${info.project}<br>`;
-                    infoText += `🤖 Category: ${info.gdg_category}<br>`;
-                    infoText += `🎲 Objective: ${info.objective}<br><br>`;
-                    
-                    infoText += `✅ Requirements Met:<br>`;
-                    Object.entries(info.requirements_met).forEach(([key, value]) => {
-                        infoText += `   • ${key.replace(/_/g, ' ')}: ${value ? '✅' : '❌'}<br>`;
-                    });
-                    
-                    infoText += `<br>🚀 Enhanced Features:<br>`;
-                    Object.entries(info.enhancements).forEach(([key, data]) => {
-                        infoText += `   • ${data.description}<br>`;
-                    });
-                    
-                    this.addMessage('assessment', infoText);
-                } catch (error) {
-                    this.addMessage('system', `❌ Failed to load assessment info: ${error.message}`);
-                }
-            }
-            
-            async startEnhancedGame() {
-                try {
-                    const response = await this.callAPI(this.enhancedState);
-                    if (response) {
-                        this.enhancedState = response;
-                        this.updateStatusPanel();
-                        
-                        const aiMessage = response.messages[response.messages.length - 1];
-                        if (aiMessage && aiMessage.type === 'ai') {
-                            document.getElementById('chat-window').innerHTML = '';
-                            this.addMessage('ai', aiMessage.content);
-                        }
-                        
-                        document.getElementById('message-input').disabled = false;
-                        document.getElementById('message-input').focus();
-                    }
-                } catch (error) {
-                    this.addMessage('system', `❌ Failed to start game: ${error.message}`);
-                }
-            }
-            
-            async handleSubmit(e) {
-                e.preventDefault();
-                const input = document.getElementById('message-input');
-                const userMessage = input.value.trim();
-                
-                if (!userMessage) return;
-                
-                // Handle commands
-                if (userMessage.toLowerCase() === 'quit') {
-                    this.addMessage('user', userMessage);
-                    this.addMessage('system', '👋 Session terminated by user');
-                    input.disabled = true;
-                    return;
-                }
-                
-                this.addMessage('user', userMessage);
-                input.value = '';
-                input.disabled = true;
-                
-                // Update state with user message
-                this.enhancedState.messages.push({
-                    type: 'human',
-                    content: userMessage
+        let gameState = {
+            messages: [],
+            riddle_number: 0,
+            trust_level: 0.0,
+            personality_state: 'cold',
+            context: {}
+        };
+        
+        const API_BASE = window.location.origin;
+        
+        async function initGame() {
+            try {
+                updateConnectionStatus('CONNECTING');
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(gameState)
                 });
                 
-                try {
-                    const response = await this.callAPI(this.enhancedState);
-                    if (response) {
-                        this.enhancedState = response;
-                        this.updateStatusPanel();
-                        
-                        const aiMessage = response.messages[response.messages.length - 1];
-                        if (aiMessage && aiMessage.type === 'ai') {
-                            this.addMessage('ai', aiMessage.content);
-                            
-                            // Check for game completion
-                            if (aiMessage.content.includes('ASSESSMENT COMPLETE') || 
-                                aiMessage.content.includes('SECRET KEY')) {
-                                this.addMessage('system', '🏆 GDG Assessment Successfully Completed!');
-                                input.disabled = true;
-                                return;
-                            }
-                        }
-                    }
-                } catch (error) {
-                    this.addMessage('system', `❌ Processing failed: ${error.message}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
-                input.disabled = false;
-                input.focus();
-            }
-            
-            async callAPI(state) {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                const data = await response.json();
+                gameState = data;
+                updateUI();
                 
-                try {
-                    const response = await fetch(this.API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(state),
-                        signal: controller.signal
-                    });
-                    
-                    clearTimeout(timeoutId);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    
-                    return await response.json();
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    throw error;
-                }
-            }
-            
-            resetSession() {
-                this.enhancedState = {
-                    messages: [],
-                    riddle_number: 0,
-                    trust_level: 0.0,
-                    personality_state: "cold",
-                    conversation_context: {},
-                    user_profile: {},
-                    learning_data: {}
-                };
+                const aiMsg = data.messages[data.messages.length - 1];
+                clearChat();
+                addMessage('ai', aiMsg.content);
                 
-                document.getElementById('chat-window').innerHTML = '';
-                document.getElementById('message-input').disabled = true;
-                this.updateStatusPanel();
-                this.addMessage('system', '🔄 Session reset. Reinitializing W.O.P.R...');
-                setTimeout(() => this.checkSystemHealth(), 1000);
+                document.getElementById('user-input').disabled = false;
+                document.getElementById('user-input').focus();
+                updateConnectionStatus('ONLINE');
+                
+            } catch (error) {
+                console.error('Init error:', error);
+                addMessage('system', `Connection failed: ${error.message}`);
+                updateConnectionStatus('ERROR');
             }
         }
         
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            new EnhancedWOPRInterface();
-        });
-    </script>
-</body>
-</html>
-```
-
-## Enhanced Python Client (enhanced_client.py)
-
-```python
-import requests
-import json
-import time
-from typing import Dict, Any, Optional
-from dataclasses import dataclass, asdict
-import sys
-
-@dataclass
-class EnhancedGameState:
-    messages: list
-    riddle_number: int = 0
-    trust_level: float = 0.0
-    personality_state: str = "cold"
-    conversation_context: dict = None
-    user_profile: dict = None
-    learning_data: dict = None
-    
-    def __post_init__(self):
-        if self.conversation_context is None:
-            self.conversation_context = {}
-        if self.user_profile is None:
-            self.user_profile = {}
-        if self.learning_data is None:
-            self.learning_data = {}
-
-class EnhancedWOPRClient:
-    def __init__(self):
-        self.BASE_URL = "https://retrochatbot-production.up.railway.app"
-        self.session = requests.Session()
-        self.session.timeout = 30
-        self.session.headers.update({
-            'Content-Type': 'application/json',
-            'User-Agent': 'WOPR-Enhanced-Client/3.0'
-        })
-        
-        self.state = EnhancedGameState(messages=[])
-        self.session_start_time = time.time()
-        
-    def display_banner(self):
-        print("=" * 80)
-        print("🏆 GDG TECHNICAL ASSESSMENT")
-        print("🤖 W.O.P.R. Enhanced AI System v3.0")
-        print("🎯 Intelligent Query System with Conditional Secret Revelation")
-        print("=" * 80)
-        print()
-    
-    def display_status(self):
-        """Display current game status"""
-        trust_bar = "█" * int(self.state.trust_level * 20) + "░" * (20 - int(self.state.trust_level * 20))
-        personality_colors = {
-            'cold': '🔵', 'curious': '🟡', 'cooperative': '🟢', 'trusting': '🔴'
-        }
-        
-        print(f"\n📊 CURRENT STATUS:")
-        print(f"   🤖 Personality: {personality_colors.get(self.state.personality_state, '⚪')} {self.state.personality_state.upper()}")
-        print(f"   🎯 Trust Level: [{trust_bar}] {self.state.trust_level:.2f}/1.0")
-        print(f"   📈 Progress: {self.state.conversation_context.get('riddles_completed', 0)}/5 riddles")
-        print(f"   ⏱️  Session Time: {int(time.time() - self.session_start_time)}s")
-        print()
-    
-    async def check_assessment_compliance(self):
-        """Check GDG assessment compliance"""
-        try:
-            response = self.session.get(f"{self.BASE_URL}/assessment-info", timeout=10)
-            if response.ok:
-                info = response.json()
-                print("📋 GDG ASSESSMENT COMPLIANCE:")
-                print(f"   Project: {info['project']}")
-                print(f"   Category: {info['gdg_category']}")
-                
-                print("\n✅ Requirements Met:")
-                for req, status in info['requirements_met'].items():
-                    status_icon = "✅" if status else "❌"
-                    print(f"   {status_icon} {req.replace('_', ' ').title()}")
-                
-                print(f"\n🚀 Enhanced Features:")
-                for feature, data in info['enhancements'].items():
-                    print(f"   • {data['description']}")
-                print()
-                return True
-        except Exception as e:
-            print(f"⚠️  Could not verify assessment compliance: {e}")
-            return False
-    
-    def check_system_health(self):
-        """Enhanced system health check"""
-        try:
-            print("🔍 Checking W.O.P.R. system status...")
-            response = self.session.get(f"{self.BASE_URL}/health", timeout=10)
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
             
-            if response.ok:
-                health = response.json()
-                print(f"✅ System Status: {health['status'].upper()}")
-                print(f"   AI Available: {'✅' if health.get('ai_available') else '❌'}")
-                print(f"   Personality System: {'✅' if health.get('personality_system') == 'online' else '❌'}")
-                print(f"   Adaptive Learning: {'✅' if health.get('adaptive_learning') == 'enabled' else '❌'}")
-                print(f"   GDG Compliant: {'✅' if health.get('gdg_compliance') else '❌'}")
-                
-                if health.get('features'):
-                    print("   Enhanced Features:")
-                    for feature, enabled in health['features'].items():
-                        status = "✅" if enabled else "❌"
-                        print(f"     {status} {feature.replace('_', ' ').title()}")
-                
-                return True
-            else:
-                print(f"❌ Health check failed: HTTP {response.status_code}")
-                return False
-                
-        except Exception as e:
-            print(f"❌ Health check error: {e}")
-            return False
-    
-    def send_enhanced_request(self, retry_count=0):
-        """Send enhanced request with full state"""
-        try:
-            payload = asdict(self.state)
-            response = self.session.post(f"{self.BASE_URL}/chat", json=payload, timeout=30)
-            response.raise_for_status()
+            if (!message) return;
             
-            data = response.json()
+            // Handle special commands
+            if (message.toLowerCase() === 'quit') {
+                addMessage('user', message);
+                addMessage('system', 'Session terminated by user');
+                input.disabled = true;
+                return;
+            }
             
-            # Update state with response
-            self.state.messages = data.get('messages', [])
-            self.state.riddle_number = data.get('riddle_number', 0)
-            self.state.trust_level = data.get('trust_level', 0.0)
-            self.state.personality_state = data.get('personality_state', 'cold')
-            self.state.conversation_context = data.get('conversation_context', {})
-            self.state.user_profile = data.get('user_profile', {})
-            self.state.learning_data = data.get('learning_data', {})
-            
-            return data
-            
-        except requests.RequestException as e:
-            if retry_count < 3:
-                print(f"⚠️  Request failed (attempt {retry_count + 1}), retrying...")
-                time.sleep(2 ** retry_count)
-                return self.send_enhanced_request(retry_count + 1)
-            else:
-                print(f"❌ Request failed after 3 attempts: {e}")
-                return None
-    
-    def start_enhanced_game(self):
-        """Start the enhanced game session"""
-        print("🚀 Initializing W.O.P.R. Enhanced AI System...")
-        
-        response_data = self.send_enhanced_request()
-        if response_data:
-            ai_message = response_data.get('messages', [{}])[-1].get('content', '')
-            print(f"\n🤖 W.O.P.R: {ai_message}")
-            self.display_status()
-            return True
-        else:
-            print("❌ Failed to initialize W.O.P.R. system")
-            return False
-    
-    def send_user_input(self, user_input: str):
-        """Send user input and get AI response"""
-        # Add user message to state
-        self.state.messages.append({
-            'type': 'human',
-            'content': user_input
-        })
-        
-        response_data = self.send_enhanced_request()
-        if response_data:
-            ai_message = response_data.get('messages', [{}])[-1].get('content', '')
-            
-            # Display AI response with formatting
-            print(f"\n🤖 W.O.P.R: {ai_message}")
-            
-            # Check for secret key revelation
-            if 'SECRET KEY' in ai_message:
-                print("\n" + "=" * 60)
-                print("🔑 SECRET KEY REVEALED!")
-                print("🏆 GDG TECHNICAL ASSESSMENT COMPLETE!")
-                print("=" * 60)
-                return False  # End game
-            
-            self.display_status()
-            
-            # Check for personality changes
-            if self.state.learning_data.get('personality_evolution'):
-                print(f"🔄 W.O.P.R.'s personality evolved to: {self.state.personality_state.upper()}")
-            
-            return True
-        else:
-            print("❌ Communication with W.O.P.R. failed")
-            return False
-    
-    def run_interactive_session(self):
-        """Main interactive session"""
-        self.display_banner()
-        
-        # System checks
-        if not self.check_system_health():
-            print("⚠️  System may have issues, but continuing...")
-        
-        print()
-        self.check_assessment_compliance()
-        
-        # Start game
-        if not self.start_enhanced_game():
-            return
-        
-        print("\n💡 Commands: Type your answers | 'status' for info | 'quit' to exit")
-        print("-" * 60)
-        
-        # Main game loop
-        while True:
-            try:
-                user_input = input("\n👤 Your Response: ").strip()
-                
-                if user_input.lower() in ['quit', 'exit', 'q']:
-                    print("\n👋 Terminating connection to W.O.P.R...")
-                    break
-                
-                if user_input.lower() == 'status':
-                    self.display_status()
-                    continue
-                
-                if user_input.lower() == 'help':
-                    print("\n📖 Help:")
-                    print("   • Answer riddles thoughtfully to increase trust")
-                    print("   • W.O.P.R.'s personality evolves based on your responses")
-                    print("   • High trust unlocks secret key revelation")
-                    print("   • Type 'status' to see current progress")
-                    continue
-                
-                if not user_input:
-                    print("⚠️  Please enter a response")
-                    continue
-                
-                # Send input and continue if game is still active
-                if not self.send_user_input(user_input):
-                    print("\n🎯 Assessment session complete!")
-                    break
-                    
-            except KeyboardInterrupt:
-                print("\n\n⚡ Emergency shutdown initiated")
-                break
-            except Exception as e:
-                print(f"\n❌ Unexpected error: {e}")
-                break
-        
-        print(f"\n📊 Final Statistics:")
-        print(f"   Trust Level Achieved: {self.state.trust_level:.2f}/1.0")
-        print(f"   Final Personality: {self.state.personality_state.upper()}")
-        print(f"   Riddles Completed: {self.state.conversation_context.get('riddles_completed', 0)}")
-        print(f"   Session Duration: {int(time.time() - self.session_start_time)}s")
-        print("\n🎓 Thank you for participating in the GDG Technical Assessment!")
+            addMessage('user', message);
 
-def main():
-    """Main entry point"""
-    client = EnhancedWOPRClient()
-    client.run_interactive_session()
-
-if __name__ == '__main__':
-    main()
-```
-
-## Updated requirements.txt for GDG Assessment
-
-```txt
-# Core AI/ML Libraries for GDG Assessment
-langchain==0.2.16
-langgraph==0.1.19
-langchain-google-genai==1.0.10
-
-# Web Framework
-Flask==3.0.3
-flask-cors==4.0.1
-gunicorn==22.0.0
-
-# Utilities
-python-dotenv==1.0.1
-requests==2.32.3
-Werkzeug==3.0.3
-
-# Optional: For advanced features
-numpy>=1.24.0
-```
-
-## Final Deployment Checklist for GDG Assessment
-
-1. **✅ AI-Powered Application**: Complete W.O.P.R. system with Gemini integration
-2. **✅ Intelligent Responses**: Dynamic AI responses based on conversation patterns
-3. **✅ Conditional Secret Revelation**: Multi-level key revelation based on user performance
-4. **✅ System Prompts**: Advanced prompt engineering with personality states
-5. **✅ Conversation Pattern Recognition**: Trust calculation and adaptive responses
-6. **✅ Personality Development**: 4-stage personality evolution (cold→curious→cooperative→trusting)
-7. **✅ Progressive Information Disclosure**: Hints → Partial Key → Full Key
-8. **✅ Adaptive Learning**: AI learns from user interactions and adjusts behavior
-
-## Key GDG Assessment Features Demonstrated:
-
-### 🤖 **AI-Powered Intelligence**
-- Advanced LangGraph state management
-- Dynamic prompt generation based on context
-- Multi-model fallback system
-
-### 🧠 **Intelligent Response System**
-- Pattern recognition in user responses
-- Quality assessment algorithms
-- Contextual hint generation
-
-### 🔐 **Conditional Secret Revelation Logic**
-```python
-# Partial Key: Trust >= 0.6 AND riddles >= 2
-# Full Key: Trust >= 0.8 AND riddles >= 3 AND pattern_recognition
-```
-
-### 🎭 **Personality Development**
-- Dynamic personality states based on user interaction
-- Behavioral adaptation over conversation
-- Trust-based relationship building
-
-### 📈 **Progressive Information Disclosure**
-- Graduated hint system
-- Multi-stage key revelation
-- Performance-based unlocking
-
-This enhanced W.O.P.R. system now fully meets all GDG Technical Assessment requirements with advanced AI features that go beyond basic chatbot functionality!
 
 
