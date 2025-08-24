@@ -1,4 +1,3 @@
-
 """
 W.O.P.R. Enhanced AI System - GDG Technical Assessment
 Fixed version for reliable deployment with quota protection
@@ -537,17 +536,17 @@ logger.info("✅ LangGraph workflow compiled")
 # // FLASK APPLICATION                                                              //
 # //================================================================================//
 
-# Create Flask app
-app_flask = Flask(__name__)
-CORS(app_flask, resources={r"/*": {"origins": "*"}})
-app_flask.config['JSON_SORT_KEYS'] = False
+# Create Flask app - FIXED: Changed variable name to 'app' for Procfile compatibility
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
+app.config['JSON_SORT_KEYS'] = False
 
-@app_flask.route('/')
+@app.route('/')
 def index():
     """Serve the main interface"""
     return render_template('index.html')
 
-@app_flask.route('/health')
+@app.route('/health')
 def health():
     """Health check endpoint"""
     global daily_requests, ai_available
@@ -591,7 +590,7 @@ def health():
             "fallback_available": True
         }), 500
 
-@app_flask.route('/chat', methods=['POST'])
+@app.route('/chat', methods=['POST'])
 def chat():
     """Main chat endpoint"""
     try:
@@ -650,7 +649,7 @@ def chat():
             "fallback_available": True
         }), 500
 
-@app_flask.route('/assessment-info')
+@app.route('/assessment-info')
 def assessment_info():
     """GDG assessment compliance information"""
     return jsonify({
@@ -757,6 +756,6 @@ if __name__ == '__main__':
     print(f"📋 Access /assessment-info for GDG compliance")
     
     port = int(os.environ.get('PORT', 5000))
-    app_flask.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)
 
 
