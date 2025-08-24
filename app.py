@@ -120,15 +120,15 @@ app_langgraph = workflow.compile()
 print(">>> NEURAL PATHWAYS COMPILED...")
 
 # --- 5. EXTERNAL COMMUNICATION INTERFACE (FLASK) ---
-app_flask = Flask(__name__)
-CORS(app_flask)
+app = Flask(__name__)
+CORS(app)
 
-@app_flask.route('/')
+@app.route('/')
 def serve_index():
     """Serves the main HTML page of the web app."""
     return render_template('index.html')
 
-@app_flask.route('/chat', methods=['POST'])
+@app.route('/chat', methods=['POST'])
 def chat():
     print(f"\n[+] INCOMING TRANSMISSION FROM UNKNOWN HOST...")
     data = request.json
@@ -167,7 +167,8 @@ def chat():
 if __name__ == '__main__':
     print(">>> COMMUNICATION INTERFACE ONLINE. AWAITING CONNECTION ON PORT 5001...")
     print("//==============================================================//")
-    app_flask.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001)
+
 
 
 
