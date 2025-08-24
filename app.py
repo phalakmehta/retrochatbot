@@ -1,4 +1,4 @@
-n3
+
 """
 W.O.P.R. Enhanced AI System - GDG Technical Assessment
 Fixed version for reliable deployment with quota protection
@@ -758,4 +758,5 @@ if __name__ == '__main__':
     
     port = int(os.environ.get('PORT', 5000))
     app_flask.run(host='0.0.0.0', port=port, debug=False)
+
 
