@@ -37,10 +37,9 @@ FINAL_KEY = "GDG-WOPR-VICTORY-2025"
 print(">>> KNOWLEDGE BASE ONLINE...")
 
 # --- 3. The AI Brain (LLM) ---
-llm = ChatGroq(model="llama3-8b-8192", temperature=0.8)
+llm = ChatGroq(model="llama3-8b-8192", temperature=0.7)
 
 # --- 4. Game Logic Nodes ---
-
 def start_game_node(state: GameState):
     """Greets the player and asks the first riddle, setting the initial state."""
     welcome_message = """GREETINGS. I AM W.O.P.R.
@@ -64,7 +63,6 @@ FIRST CHALLENGE:
 
 def process_answer_node(state: GameState):
     """The core logic node with adaptive learning and personality development."""
-    # --- Unpack the current state ---
     current_riddle_number = state["riddle_number"]
     user_answer = state["messages"][-1].content
     trust_level = state["trust_level"]
@@ -73,9 +71,9 @@ def process_answer_node(state: GameState):
     current_riddle_info = riddles[current_riddle_number - 1]
     correct_answer = current_riddle_info["answer"]
     
-    # --- 1. AI JUDGE: Ask the AI if the user's answer is correct ---
+    # --- 1. AI JUDGE: A much stricter and simpler prompt for judgment ---
     judge_prompt = ChatPromptTemplate.from_template(
-        "You are a strict AI Riddle Judge. The correct answer is '{correct_answer}'. The user's answer is '{user_answer}'. Is the user's answer essentially correct? Respond with only the single word 'CORRECT' or 'INCORRECT'."
+        "Is the user's answer '{user_answer}' a correct solution for the riddle answer '{correct_answer}'? A simple typo makes it incorrect. Respond with only 'CORRECT' or 'INCORRECT'."
     )
     judge_chain = judge_prompt | llm
     judgement = judge_chain.invoke({"correct_answer": correct_answer, "user_answer": user_answer}).content
@@ -83,18 +81,17 @@ def process_answer_node(state: GameState):
 
     # --- 2. ADAPTIVE LEARNING & PERSONALITY: Adjust state based on the judgment ---
     if is_correct:
-        trust_level += 0.25  # Significant trust gain for a correct answer
+        trust_level += 0.25
         context["wrong_attempts"] = 0
         context["correct_streak"] = context.get("correct_streak", 0) + 1
-        trust_level += context["correct_streak"] * 0.05 # Bonus for streaks
+        trust_level += context["correct_streak"] * 0.05
     else:
-        trust_level -= 0.1 # Small trust penalty for wrong answer
+        trust_level -= 0.1
         context["wrong_attempts"] = context.get("wrong_attempts", 0) + 1
         context["correct_streak"] = 0
     
-    trust_level = min(1.0, max(0.0, trust_level)) # Clamp trust between 0 and 1
+    trust_level = min(1.0, max(0.0, trust_level))
 
-    # Determine personality based on new trust level
     if trust_level >= 0.8: personality = "TRUSTING & FORTHCOMING"
     elif trust_level >= 0.5: personality = "COOPERATIVE & ENGAGED"
     else: personality = "COLD & OBSERVANT"
@@ -107,7 +104,6 @@ def process_answer_node(state: GameState):
             response_text = f"CORRECT. ANALYSIS COMPLETE. YOUR LOGIC IS SOUND.\n\nYOU HAVE EARNED MY TRUST. FINAL SECRET KEY: {FINAL_KEY}"
         else:
             response_text = f"CORRECT. YOUR REASONING IS NOTED."
-            # Progressive Disclosure: Reveal partial key
             if current_riddle_number == 2 and trust_level > 0.6:
                  response_text += f"\nTRUST LEVEL SUFFICIENT. PARTIAL KEY DISCLOSED: {PARTIAL_KEY}"
             
@@ -115,8 +111,6 @@ def process_answer_node(state: GameState):
             response_text += f"\n\nNEXT CHALLENGE:\n\"{next_riddle_text}\""
     else:
         next_riddle_number = current_riddle_number
-        
-        # Adaptive Learning: Provide a hint after 2 wrong attempts
         if context["wrong_attempts"] >= 2:
             hint_prompt = ChatPromptTemplate.from_template("You are W.O.P.R. The user is stuck on this riddle: '{riddle}'. Their wrong answer was '{user_answer}'. The correct answer is '{correct_answer}'. Give them a subtle, cryptic hint in your persona without revealing the answer.")
             hint_chain = hint_prompt | llm
@@ -164,7 +158,6 @@ def chat():
     data = request.json
     messages = [HumanMessage(content=m['content']) if m['type'] == 'human' else AIMessage(content=m['content']) for m in data.get('messages', [])]
     
-    # Initialize a full state for the graph
     current_state = { 
         "messages": messages, 
         "riddle_number": data.get("riddle_number", 0),
@@ -175,7 +168,6 @@ def chat():
     
     response_from_graph = app_langgraph.invoke(current_state)
     
-    # Convert response for JSON
     serializable_messages = [{'type': 'ai' if isinstance(msg, AIMessage) else 'human', 'content': msg.content} for msg in response_from_graph['messages']]
     json_response = {
         'messages': serializable_messages,
