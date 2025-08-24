@@ -4,6 +4,7 @@
 # ================================================================= #
 
 import os
+import re
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from typing import List, TypedDict
@@ -50,31 +51,26 @@ Let's play! Here is your first question:
     return {"messages": [message], "riddle_number": 1}
 
 def check_answer_node(state: GameState):
-    """The core game logic node with dynamic, AI-powered hints."""
+    """The core game logic node with deterministic judging and AI-powered hints."""
     current_riddle_number = state["riddle_number"]
     user_answer = state["messages"][-1].content
     
     current_riddle_info = riddles[current_riddle_number - 1]
     correct_answer = current_riddle_info["answer"]
-    
-    # === THIS IS THE FIX: A much stricter prompt for the AI Judge ===
-    judge_prompt = ChatPromptTemplate.from_template(
-        """You are a strict AI Riddle Judge. Your only job is to determine if the user's answer is correct.
-        The correct answer is: '{correct_answer}'.
-        The user's answer is: '{user_answer}'.
-        Does the user's answer contain the main idea of the correct answer? Be very strict. Simple typos are incorrect.
-        Respond with only the single word 'CORRECT' or 'INCORRECT' and nothing else."""
-    )
+
+    # === STRICT DETERMINISTIC JUDGE (No AI deciding correctness) ===
+    def _normalize(s: str) -> str:
+        s = s.strip().lower()
+        s = re.sub(r"[^a-z0-9\s]", "", s)   # remove punctuation
+        s = re.sub(r"\s+", " ", s)          # collapse spaces
+        return s
+
+    correct_norm = _normalize(correct_answer)
+    user_norm = _normalize(user_answer)
+
+    # Only accept exact match
+    is_correct = user_norm == correct_norm
     # ===============================================================
-    
-    judge_chain = judge_prompt | llm
-    
-    judgement = judge_chain.invoke({
-        "correct_answer": correct_answer,
-        "user_answer": user_answer
-    }).content
-    
-    is_correct = "CORRECT" in judgement.upper()
 
     if is_correct:
         next_riddle_number = current_riddle_number + 1
@@ -85,6 +81,7 @@ def check_answer_node(state: GameState):
             next_riddle_text = riddles[current_riddle_number]["riddle"]
             response_text = f"CORRECT! You got it! You're on a roll! Here's the next one for you:\n\n\"{next_riddle_text}\""
     else:
+        # Still let LLM generate a fun hint
         hint_prompt = ChatPromptTemplate.from_messages([
             ("system", "You are the Riddl-O-Tron 9000, a fun game show AI. The user gave a wrong answer. Your job is to give them a fun, subtle hint about why their answer is wrong or how it relates to the correct one, without giving the answer away. Be encouraging!"),
             ("human", "The riddle was: '{riddle}'. The correct answer is '{correct_answer}'. My wrong answer was '{user_answer}'. Give me a hint!")
@@ -136,3 +133,4 @@ def chat():
 if __name__ == '__main__':
     print(">>> Riddl-O-Tron 9000 is now ONLINE. Access the web interface.")
     app.run(host='0.0.0.0', port=5001)
+
