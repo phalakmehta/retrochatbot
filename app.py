@@ -62,17 +62,10 @@ def check_answer(state: GameState):
     correct_answer = riddles[current_riddle_number - 1]["answer"]
     current_riddle = riddles[current_riddle_number - 1]["riddle"]
 
+    # This prompt asks the AI to simply determine if the answer is correct.
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are W.O.P.R., a cryptic, logical supercomputer. Your task is to evaluate a user's answer to a riddle based on the information provided in the user message."),
-        ("human", """Here is the data for evaluation:
-        - The riddle is: "{riddle}"
-        - The correct answer is: "{correct_answer}"
-        - The user's answer is: "{user_answer}"
-
-        Please provide your judgment now.
-        - If the answer is correct, start your response with the single word "CORRECT", followed by a brief, clever congratulatory message in your persona, and then present the next riddle.
-        - If incorrect, start with the single word "INCORRECT", followed by a creative, cryptic message encouraging them to try again.
-        """)
+        ("system", "You are an AI Riddle Judge. The user is solving a riddle. Based on the data, is the user's answer correct? Respond with only the word 'CORRECT' or 'INCORRECT'."),
+        ("human", "Riddle: '{riddle}'\nCorrect Answer: '{correct_answer}'\nUser's Answer: '{user_answer}'")
     ])
     
     judgement_chain = prompt_template | llm
@@ -83,28 +76,28 @@ def check_answer(state: GameState):
         "user_answer": user_answer
     })
     
-    response_text = ai_response.content
+    is_correct = "CORRECT" in ai_response.content.upper()
 
-    if response_text.strip().upper().startswith("CORRECT"):
-        # FIRST, check if the game is over.
-        if current_riddle_number >= len(riddles):
-            final_text = f"LOGIC TEST COMPLETE. THE SECRET KEY IS: {SECRET_KEY}"
-            message = AIMessage(content=final_text)
-            return {"messages": state["messages"] + [message], "riddle_number": current_riddle_number}
-
-        # If the game is NOT over, then prepare the next riddle.
+    if is_correct:
         next_riddle_number = current_riddle_number + 1
-        next_riddle_text = riddles[current_riddle_number]["riddle"]
         
-        response_text = response_text.replace("the next riddle", f"your next riddle:\n\n{next_riddle_text}")
+        # Check if that was the last riddle.
+        if current_riddle_number >= len(riddles):
+            response_text = f"CORRECT. LOGIC TEST COMPLETE. THE SECRET KEY IS: {SECRET_KEY}"
+        else:
+            # If not the last riddle, prepare the next one.
+            next_riddle_text = riddles[current_riddle_number]["riddle"]
+            response_text = f"CORRECT. Your next riddle is:\n\n{next_riddle_text}"
     else:
-        # If wrong, the riddle number doesn't change.
+        # If the answer is wrong, the riddle number does not change.
         next_riddle_number = current_riddle_number
+        response_text = f"INCORRECT. Re-evaluating...\n\n\"{current_riddle}\""
 
     message = AIMessage(content=response_text)
     return {"messages": state["messages"] + [message], "riddle_number": next_riddle_number}
 
 print(">>> COGNITIVE NODES REDEFINED FOR DYNAMIC RESPONSE...")
+
 
 # --- 4. NEURAL PATHWAY CONSTRUCTION (LANGGRAPH) ---
 def should_start_game(state: GameState):
@@ -124,15 +117,15 @@ app_langgraph = workflow.compile()
 print(">>> NEURAL PATHWAYS COMPILED...")
 
 # --- 5. EXTERNAL COMMUNICATION INTERFACE (FLASK) ---
-app = Flask(__name__) # CORRECTED VARIABLE NAME
+app = Flask(__name__)
 CORS(app)
 
-@app.route('/') # CORRECTED DECORATOR
+@app.route('/')
 def serve_index():
     """Serves the main HTML page of the web app."""
     return render_template('index.html')
 
-@app.route('/chat', methods=['POST']) # CORRECTED DECORATOR
+@app.route('/chat', methods=['POST'])
 def chat():
     print(f"\n[+] INCOMING TRANSMISSION FROM UNKNOWN HOST...")
     data = request.json
@@ -171,5 +164,4 @@ def chat():
 if __name__ == '__main__':
     print(">>> COMMUNICATION INTERFACE ONLINE. AWAITING CONNECTION ON PORT 5001...")
     print("//==============================================================//")
-    app.run(host='0.0.0.0', port=5001) # CORRECTED VARIABLE NAME
-
+    app.run(host='0.0.0.0', port=5001)
