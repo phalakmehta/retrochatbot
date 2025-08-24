@@ -61,10 +61,16 @@ def check_answer_node(state: GameState):
     # --- AI JUDGE: First, ask the AI if the answer is correct ---
     judge_prompt = ChatPromptTemplate.from_messages([
         ("system", "You are an AI Riddle Judge. The user is answering a riddle. Is their answer correct? The correct answer is '{correct_answer}'. The user's answer is '{user_answer}'. Respond with only the word 'CORRECT' or 'INCORRECT'."),
-        ("human", user_answer)
+        ("human", "My answer is: {user_answer}")
     ])
     judge_chain = judge_prompt | llm
-    judgement = judge_chain.invoke({"correct_answer": correct_answer, "user_answer": user_answer}).content
+    
+    # === THIS IS THE FIX: We must pass the variables to the invoke call ===
+    judgement = judge_chain.invoke({
+        "correct_answer": correct_answer,
+        "user_answer": user_answer
+    }).content
+    # =====================================================================
     
     is_correct = "CORRECT" in judgement.upper()
 
@@ -72,10 +78,8 @@ def check_answer_node(state: GameState):
         next_riddle_number = current_riddle_number + 1
         
         if current_riddle_number >= len(riddles):
-            # Game won
             response_text = f"CORRECT! BEEP BOOP... AMAZING! You've answered all my riddles! You are a true genius! As promised, here is your GRAND PRIZE:\n\n{SECRET_KEY}"
         else:
-            # Correct answer, next riddle
             next_riddle_text = riddles[current_riddle_number]["riddle"]
             response_text = f"CORRECT! You got it! You're on a roll! Here's the next one for you:\n\n\"{next_riddle_text}\""
     else:
@@ -92,14 +96,14 @@ def check_answer_node(state: GameState):
         }).content
         
         response_text = f"BZZZT! Not quite! But let's see... {hint}\nTry answering this riddle again:\n\n\"{current_riddle_info['riddle']}\""
-        next_riddle_number = current_riddle_number # Stay on the same riddle
+        next_riddle_number = current_riddle_number
 
     message = AIMessage(content=response_text)
     return {"messages": state["messages"] + [message], "riddle_number": next_riddle_number}
 
+
 # --- 5. Graph and Workflow Assembly ---
 def router(state: GameState):
-    """Determines the starting point of the conversation."""
     return "start_game_node" if len(state["messages"]) == 0 else "check_answer_node"
 
 workflow = StateGraph(GameState)
@@ -117,12 +121,10 @@ CORS(app)
 
 @app.route('/')
 def serve_index():
-    """Serves the main HTML page for the web app."""
     return render_template('index.html')
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Handles chat requests from the frontend."""
     data = request.json
     messages = [HumanMessage(content=m['content']) if m['type'] == 'human' else AIMessage(content=m['content']) for m in data.get('messages', [])]
     
@@ -138,3 +140,4 @@ def chat():
 if __name__ == '__main__':
     print(">>> Riddl-O-Tron 9000 is now ONLINE. Access the web interface.")
     app.run(host='0.0.0.0', port=5001)
+
